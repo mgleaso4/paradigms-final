@@ -6,9 +6,29 @@ import os, sys, pygame, math
 
 class Player(pygame.sprite.Sprite):
 	def __init__(self,gs):
-		return
+		self.head = pygame.Surface((10,10))
+		self.rect = self.head.get_rect()
+		self.rect.centerx = 320
+		self.rect.centery = 240
+		self.blue = (0,0,255)
+		self.xvel = 0
+		self.yvel = -1
+	def move(self,key):
+		if key == pygame.K_UP and self.yvel <= 0:
+			self.xvel = 0
+			self.yvel = -1
+		if key == pygame.K_DOWN and self.yvel >= 0:
+			self.xvel = 0
+			self.yvel = 1
+		if key == pygame.K_LEFT and self.xvel <= 0:
+			self.xvel = -1
+			self.yvel = 0
+		if key == pygame.K_RIGHT and self.xvel >= 0:
+			self.xvel = 1
+			self.yvel = 0
 	def tick(self):
-		return
+		self.rect.centerx += self.xvel
+		self.rect.centery += self.yvel
 
 class GameSpace:
 	def main(self):
@@ -35,13 +55,20 @@ class GameSpace:
 			for event in pygame.event.get():
 				if event.type == pygame.KEYDOWN:
 # Quit on Escape Press
-					if event.key == pygame.ESCAPE:
+					if event.key == pygame.K_ESCAPE:
 						running = False
+					else:
+						self.player.move(event.key)
 				elif event.type == pygame.QUIT:
 					running = False
 
+# Call Tick Functions
+			self.player.tick()
+
 # Update Screen
 			self.screen.fill(self.black)
+			self.screen.blit(self.player.head,self.player.rect)
+			self.player.head.fill(self.player.blue)
 			pygame.display.flip()
 			pygame.display.update()
 
