@@ -7,13 +7,16 @@ import os, sys, pygame, math, collections
 class Player(pygame.sprite.Sprite):
 # Initialize Player with Starting Position
 	def __init__(self,gs):
-		self.head = pygame.Surface((5,5))
+		self.gs = gs
+		self.head_size = 5
+		self.head = pygame.Surface((self.head_size,self.head_size))
 		self.rect = self.head.get_rect()
 		self.rect.centerx = 320
 		self.rect.centery = 240
 		self.blue = (0,0,255)
 		self.xvel = 0
 		self.yvel = -1
+		self.alive = True
 
 # Create Tail to Store Previous Rectangles
 		self.tail_len = 50
@@ -36,14 +39,22 @@ class Player(pygame.sprite.Sprite):
 			self.yvel = 0
 
 	def tick(self):
+		if self.alive:
 # Update the Player Position
-		self.rect.centerx += self.xvel
-		self.rect.centery += self.yvel
+			self.rect.centerx += self.xvel
+			self.rect.centery += self.yvel
 
 # Add the New Rectangle to the Left of the Tail and Pop the Rightmost Rectangle
-		self.tail.appendleft(self.rect.copy())
-		while len(self.tail) > self.tail_len:
-			self.tail.pop()
+			self.tail.appendleft(self.rect.copy())
+			while len(self.tail) > self.tail_len:
+				self.tail.pop()
+
+# Check for Collision with Boundaries or Self
+			if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
+				self.alive = False
+			for r in range(self.head_size*2,len(self.tail)):
+				if self.rect.colliderect(self.tail[r]):
+					self.alive = False
 
 class GameSpace:
 	def main(self):
