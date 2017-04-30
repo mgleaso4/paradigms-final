@@ -11,14 +11,19 @@ class Fuel(pygame.sprite.Sprite):
 		self.food_size = 7
 		self.food = pygame.Surface((self.food_size, self.food_size))
 		self.rect = self.food.get_rect()
-		self.rect.centerx = 300
-		self.rect.centery = 200
+		self.rect.centerx = 320
+		self.rect.centery = 240
 		self.white = (255,255,255)
+		self.extend = 10
 
 	def tick(self):
 		# Check for collision between food and snake
-		if self.gs.player.rect.colliderect(self.rect):
-			self.gs.player.tail_len += 15
+		if self.gs.player1.rect.colliderect(self.rect):
+			self.gs.player1.tail_len += self.extend
+			self.rect.centerx = random.randint(4, 636)
+			self.rect.centery = random.randint(4, 476)
+		elif self.gs.player2.rect.colliderect(self.rect):
+			self.gs.player2.tail_len += self.extend
 			self.rect.centerx = random.randint(4, 636)
 			self.rect.centery = random.randint(4, 476)
 
@@ -29,38 +34,29 @@ class Player(pygame.sprite.Sprite):
 		self.head_size = 7
 		self.head = pygame.Surface((self.head_size,self.head_size))
 		self.rect = self.head.get_rect()
-		self.rect.centerx = 320
-		self.rect.centery = 240
-		self.blue = (0,0,255)
-		self.xvel = 0
-		self.yvel = -1
+		self.speed = 2
 		self.alive = True
 
 		# Create Tail to Store Previous Rectangles
-		self.tail_len = 50
+		self.tail_len = 25
 		self.tail = collections.deque()
-		self.tail.appendleft(self.rect.copy())
-		for unit in range(1,self.tail_len):
-			temp = self.rect.copy()
-			temp.centery = self.rect.centery - self.yvel * unit
-			self.tail.append(temp)
 
 	# Change the Direction of the Player
 	def move(self,key):
 		if key == pygame.K_UP and self.yvel <= 0:
 			self.xvel = 0
-			self.yvel = -1
+			self.yvel = -1 * self.speed
 		if key == pygame.K_DOWN and self.yvel >= 0:
 			self.xvel = 0
-			self.yvel = 1
+			self.yvel = self.speed
 		if key == pygame.K_LEFT and self.xvel <= 0:
-			self.xvel = -1
+			self.xvel = -1 * self.speed
 			self.yvel = 0
 		if key == pygame.K_RIGHT and self.xvel >= 0:
-			self.xvel = 1
+			self.xvel = self.speed
 			self.yvel = 0
 
-	def tick(self):
+	def tick(self, opp):
 		if self.alive:
 		# Update the Player Position
 			self.rect.centerx += self.xvel
@@ -78,6 +74,42 @@ class Player(pygame.sprite.Sprite):
 				if self.rect.colliderect(self.tail[r]):
 					self.alive = False
 
+			# Check for Collision with Opponent (Passed as Argument)
+			for r in opp:
+				if self.rect.colliderect(r):
+					self.alive = False
+
+class Player1(Player):
+	def __init__(self,gs):
+#		super(Player1, self).__init__(gs)
+		Player.__init__(self,gs)
+		self.rect.centerx = 320
+		self.rect.centery = 320
+		self.blue = (0,0,255)
+		self.xvel = 0
+		self.yvel = -1 * self.speed
+
+		self.tail.appendleft(self.rect.copy())
+		for unit in range(1,self.tail_len):
+			temp = self.rect.copy()
+			temp.centery = self.rect.centery - self.yvel * unit
+			self.tail.append(temp)
+
+class Player2(Player):
+	def __init__(self,gs):
+		Player.__init__(self,gs)
+		self.rect.centerx = 320
+		self.rect.centery = 160
+		self.red = (255,0,0)
+		self.xvel = 0
+		self.yvel = self.speed
+
+		self.tail.appendleft(self.rect.copy())
+		for unit in range(1,self.tail_len):
+			temp = self.rect.copy()
+			temp.centery = self.rect.centery - self.yvel * unit
+			self.tail.append(temp)
+
 class GameSpace:
 	def main(self):
 		# Initialize Game State Environment
@@ -88,7 +120,8 @@ class GameSpace:
 		self.clock = pygame.time.Clock()
 
 		# Initialize Game Objects
-		self.player = Player(self)
+		self.player1 = Player1(self)
+		self.player2 = Player2(self)
 		self.fuel = Fuel(self)
 
 		# Start Game Loop
@@ -104,21 +137,25 @@ class GameSpace:
 					if event.key == pygame.K_ESCAPE:
 						running = False
 					else:
-						self.player.move(event.key)
+						self.player1.move(event.key)
 				elif event.type == pygame.QUIT:
 					running = False
 
 			# Call Tick Functions
-			self.player.tick()
+			self.player1.tick(self.player2.tail)
+			self.player2.tick(self.player1.tail)
 			self.fuel.tick()
 
 			# Update Screen
 			self.screen.fill(self.black)
 			self.screen.blit(self.fuel.food, self.fuel.rect)
 			self.fuel.food.fill(self.fuel.white)
-			for rectangle in self.player.tail:
-				self.screen.blit(self.player.head,rectangle)
-			self.player.head.fill(self.player.blue)
+			for rectangle in self.player1.tail:
+				self.screen.blit(self.player1.head,rectangle)
+			for rectangle in self.player2.tail:
+				self.screen.blit(self.player2.head,rectangle)
+			self.player1.head.fill(self.player1.blue)
+			self.player2.head.fill(self.player2.red)
 			pygame.display.flip()
 			pygame.display.update()
 
