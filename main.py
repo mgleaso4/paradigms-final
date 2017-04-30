@@ -16,7 +16,7 @@ class Fuel(pygame.sprite.Sprite):
 		self.white = (255,255,255)
 
 	def tick(self):
-		# Check for collision between food and snake 
+		# Check for collision between food and snake
 		if self.gs.player.rect.colliderect(self.rect):
 			self.gs.player.tail_len += 15
 			self.rect.centerx = random.randint(4, 636)
@@ -40,6 +40,10 @@ class Player(pygame.sprite.Sprite):
 		self.tail_len = 50
 		self.tail = collections.deque()
 		self.tail.appendleft(self.rect.copy())
+		for unit in range(1,self.tail_len):
+			temp = self.rect.copy()
+			temp.centery = self.rect.centery - self.yvel * unit
+			self.tail.append(temp)
 
 	# Change the Direction of the Player
 	def move(self,key):
