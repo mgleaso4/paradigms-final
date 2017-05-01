@@ -124,7 +124,7 @@ class GameSpace:
 		self.playing = True
 
 		self.gcf = GameConnectionFactory(self)
-		reactor.listenTCP(41225, self.gcf)
+#		reactor.connectTCP("localhost", 41225, self.gcf)
 
 		# Initialize Game Objects
 		self.player1 = Player1(self)
@@ -145,7 +145,7 @@ class GameSpace:
 						self.running = False
 					else:
 						if self.playing:
-							self.player1.move(event.key)
+							self.player2.move(event.key)
 				elif event.type == pygame.QUIT:
 					self.running = False
 
