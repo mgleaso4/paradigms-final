@@ -125,7 +125,7 @@ class GameSpace:
 		self.player2 = Player2(self)
 		self.fuel = Fuel(self)
 
-		# Will be initialized to False and set to true upon connection
+		# Initialize to false and set to true upon connection
 		self.playing = False
 		self.gcf = GameConnectionFactory(self)
 		reactor.connectTCP("localhost", 40139, self.gcf)

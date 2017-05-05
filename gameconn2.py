@@ -16,21 +16,20 @@ class GameConnection(Protocol):
 		self.gs = gs
 		self.queue = DeferredQueue()
 
-	#def startForward(self):
-	#	self.queue.get().addCallback(self.forwardData)
+	def startForward(self):
+		self.queue.get().addCallback(self.forwardData)
 	
 	def connectionMade(self):
 		self.gs.playing = True
 		print("connection made")
 	
 	def dataReceived(self, data):
-		return
-	#	self.queue.put(self.gs.player2.rect)
+		self.queue.put(self.gs.player2.rect)
 
-	#def forwardData(self, data):
-	#	self.transport.write(data)
-	#	self.gs.player1.rect = data
-	#	self.queue.get().addCallback(self.forwardData)
+	def forwardData(self, data):
+		self.transport.write(data)
+		self.gs.player1.rect = data
+		self.queue.get().addCallback(self.forwardData)
 
 class GameConnectionFactory(ClientFactory):
 	def __init__(self, gs):
