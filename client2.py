@@ -130,7 +130,6 @@ class GameSpace:
 		self.gcf = GameConnectionFactory(self)
 		reactor.connectTCP("localhost", 40139, self.gcf)
 		reactor.run()
-		print ("self.playing= ", self.playing)
 
 		# Start Game Loop
 		self.running = True
