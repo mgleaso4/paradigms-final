@@ -136,11 +136,9 @@ class GameSpace:
 		self.running = True
 		while self.running:
 			self.clock.tick(60)
-
 			# Read User Input and Handle Events
 			for event in pygame.event.get():
 				if event.type == pygame.KEYDOWN:
-
 					# Quit on Escape Press
 					if event.key == pygame.K_ESCAPE:
 						self.running = False
@@ -169,7 +167,6 @@ class GameSpace:
 				self.player2.head.fill(self.player2.red)
 			pygame.display.flip()
 			pygame.display.update()
-
 
 if __name__ == "__main__":
 	gs = GameSpace()
