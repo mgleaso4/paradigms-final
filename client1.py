@@ -3,7 +3,18 @@
 # PyGame + Twisted Final Project
 
 import os, sys, pygame, math, collections, random
-from gameconn import *
+from twisted.internet.protocol import Factory
+from twisted.internet.protocol import Protocol
+from twisted.internet import reactor
+from twisted.internet.task import LoopingCall
+from twisted.internet.defer import DeferredQueue
+
+class GameConnectionFactory(Factory):
+	def __init__(self):
+		self.gameconnection = GameSpace()
+
+	def buildProtocol(self, addr):
+		return self.gameconnection
 
 class Fuel(pygame.sprite.Sprite):
 	# Initialize Fuel object with Starting Position
@@ -82,7 +93,6 @@ class Player(pygame.sprite.Sprite):
 
 class Player1(Player):
 	def __init__(self,gs):
-#		super(Player1, self).__init__(gs)
 		Player.__init__(self,gs)
 		self.rect.centerx = 320
 		self.rect.centery = 320
@@ -111,63 +121,66 @@ class Player2(Player):
 			temp.centery = self.rect.centery - self.yvel * unit
 			self.tail.append(temp)
 
-class GameSpace:
-	def main(self):
+class GameSpace(Protocol):
+	def __init__(self):
 		# Initialize Game State Environment
 		pygame.init()
 		self.size = self.width, self.height = 640,480
 		self.black = (0,0,0)
 		self.screen = pygame.display.set_mode(self.size)
-		self.clock = pygame.time.Clock()
 
 		# Initialize Game Objects
 		self.player1 = Player1(self)
 		self.player2 = Player2(self)
 		self.fuel = Fuel(self)
 
-		# Initialized to False and set to true upon connection
-		self.playing = False
-		self.gcf = GameConnectionFactory(self)
-		reactor.listenTCP(40139, self.gcf)
-		reactor.run()
+	def main(self):
+		# Read User Input and Handle Events
+		for event in pygame.event.get():
+			if event.type == pygame.KEYDOWN:
+				# Quit on Escape Press
+				if event.key == pygame.K_ESCAPE:
+					self.loop.stop()
+				else:
+					if self.playing:
+						self.player1.move(event.key)
+			elif event.type == pygame.QUIT:
+				self.loop.stop()
 
-		# Start Game Loop
-		self.running = True
-		while self.running:
-			self.clock.tick(60)
-			# Read User Input and Handle Events
-			for event in pygame.event.get():
-				if event.type == pygame.KEYDOWN:
-					# Quit on Escape Press
-					if event.key == pygame.K_ESCAPE:
-						self.running = False
-					else:
-						if self.playing:
-							self.player1.move(event.key)
-				elif event.type == pygame.QUIT:
-					self.running = False
+		if self.playing:
+			self.player1.tick(self.player2.tail)
+			self.player2.tick(self.player1.tail)
+			self.fuel.tick()
 
-			# Call Tick Functions
-			if self.playing:
-				self.player1.tick(self.player2.tail)
-				self.player2.tick(self.player1.tail)
-				self.fuel.tick()
+		# Update Screen
+		self.screen.fill(self.black)
+		self.screen.blit(self.fuel.food, self.fuel.rect)
+		if self.playing:
+			self.fuel.food.fill(self.fuel.white)
+			for rectangle in self.player1.tail:
+				self.screen.blit(self.player1.head,rectangle)
+			for rectangle in self.player2.tail:
+				self.screen.blit(self.player2.head,rectangle)
+			self.player1.head.fill(self.player1.blue)
+			self.player2.head.fill(self.player2.red)
+		pygame.display.flip()
+		pygame.display.update()
 
-			# Update Screen
-			self.screen.fill(self.black)
-			self.screen.blit(self.fuel.food, self.fuel.rect)
-			if self.playing:
-				self.fuel.food.fill(self.fuel.white)
-				for rectangle in self.player1.tail:
-					self.screen.blit(self.player1.head,rectangle)
-				for rectangle in self.player2.tail:
-					self.screen.blit(self.player2.head,rectangle)
-				self.player1.head.fill(self.player1.blue)
-				self.player2.head.fill(self.player2.red)
-			pygame.display.flip()
-			pygame.display.update()
+	def connectionMade(self):
+		self.playing = True
+		self.loop = LoopingCall(self.main)
+		self.loop.start(1/60)
+
+	#def startForward(self):
+	
+	#def dataReceived(self, data):
+
+	
+	#def forwardData(self, data):
 
 if __name__ == "__main__":
-	gs = GameSpace()
-	gs.main()
+	gcf = GameConnectionFactory()
+	reactor.listenTCP(40139, gcf)
+	reactor.run()
+
 
