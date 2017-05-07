@@ -2,13 +2,13 @@
 # Maddie Gleason and Ben Gunning
 # PyGame + Twisted Final Project
 
-import os, sys, pygame, math, collections, random
+import os, sys, pygame, math, collections, random, queue
 from twisted.internet.protocol import ClientFactory
 from twisted.internet.protocol import Protocol
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.internet.defer import DeferredQueue
-import json 
+import json
 
 class GameConnectionFactory(ClientFactory):
 	def __init__(self):
@@ -49,6 +49,7 @@ class Player(pygame.sprite.Sprite):
 		self.rect = self.head.get_rect()
 		self.speed = 2
 		self.alive = True
+		self.user = True
 
 		# Create Tail to Store Previous Rectangles
 		self.tail_len = 25
@@ -72,13 +73,29 @@ class Player(pygame.sprite.Sprite):
 	def tick(self, opp):
 		if self.alive:
 		# Update the Player Position
-			self.rect.centerx += self.xvel
-			self.rect.centery += self.yvel
+			if self.user:
+				self.rect.centerx += self.xvel
+				self.rect.centery += self.yvel
 
-			# Add the New Rectangle to the Left of the Tail and Pop the Rightmost Rectangle
-			self.tail.appendleft(self.rect.copy())
-			while len(self.tail) > self.tail_len:
-				self.tail.pop()
+				# Add the New Rectangle to the Left of the Tail and Pop the Rightmost Rectangle
+				self.tail.appendleft(self.rect.copy())
+				while len(self.tail) > self.tail_len:
+					self.tail.pop()
+
+				# Send the New Head to the Other Client
+#				pos = {"x": self.rect.centerx, "y": self.rect.centery}
+#				data = json.loads(pos)
+#				self.gs.transport.write(data)
+			else:
+				if not self.gs.queue.empty():
+					data = self.gs.queue.get()
+					pos = json.dumps(data)
+					self.rect.centerx = pos["x"]
+					self.rect.centery = pos["y"]
+
+					self.tail.appendleft(self.rect.copy())
+					while len(self.tail) > self.tail_len:
+						self.tail.pop()
 
 			# Check for Collision with Boundaries or Self
 			if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
@@ -100,6 +117,7 @@ class Player1(Player):
 		self.blue = (0,0,255)
 		self.xvel = 0
 		self.yvel = -1 * self.speed
+		self.user = False
 
 		self.tail.appendleft(self.rect.copy())
 		for unit in range(1,self.tail_len):
@@ -115,6 +133,7 @@ class Player2(Player):
 		self.red = (255,0,0)
 		self.xvel = 0
 		self.yvel = self.speed
+		self.user = True
 
 		self.tail.appendleft(self.rect.copy())
 		for unit in range(1,self.tail_len):
@@ -129,11 +148,12 @@ class GameSpace(Protocol):
 		self.size = self.width, self.height = 640,480
 		self.black = (0,0,0)
 		self.screen = pygame.display.set_mode(self.size)
-	
+
 		# Initialize Game Objects
 		self.player1 = Player1(self)
 		self.player2 = Player2(self)
 		self.fuel = Fuel(self)
+		self.queue = queue.Queue()
 
 	def main(self):
 		# Read User Input and Handle Events
@@ -172,19 +192,20 @@ class GameSpace(Protocol):
 		self.playing = True
 		self.loop = LoopingCall(self.main)
 		self.loop.start(1/60)
-		self.transport.write('connection made in client2.py')
+		#self.transport.write('connection made in client2.py')
 		#pos = {"x": self.player2.rect.centerx, "y": self.player2.rect.centery}
 		#data = json.loads(pos)
-		#self.transport.write(data) 
-		
+		#self.transport.write(data)
+
 	def dataReceived(self, data):
-		pass
+		self.queue.put(data)
+		#pass
 		#pos = json.dumps(data)
 		#self.player1.rect.centerx = pos['x']
 		#self.player1.rect.centery = pos['y']
-				
+
 if __name__ == "__main__":
 	gcf = GameConnectionFactory()
 	reactor.connectTCP("localhost", 40139, gcf)
 	reactor.run()
-	
+
