@@ -8,6 +8,7 @@ from twisted.internet.protocol import Protocol
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.internet.defer import DeferredQueue
+import json 
 
 class GameConnectionFactory(Factory):
 	def __init__(self):
@@ -170,17 +171,19 @@ class GameSpace(Protocol):
 		self.playing = True
 		self.loop = LoopingCall(self.main)
 		self.loop.start(1/60)
-
-	#def startForward(self):
+		self.transport.write('connection made in client1.py')
+		#pos = {"x": self.player1.rect.centerx, "y": self.player1.rect.centery}
+		#data = json.loads(pos)
+		#self.transport.write(data)
 	
-	#def dataReceived(self, data):
-
-	
-	#def forwardData(self, data):
+	def dataReceived(self, data):
+		pass
+		#pos = json.dumps(data)
+		#self.player2.rect.centerx = pos['x']
+		#self.player2.rect.centery = pos['y']
 
 if __name__ == "__main__":
 	gcf = GameConnectionFactory()
 	reactor.listenTCP(40139, gcf)
 	reactor.run()
-
 

@@ -8,6 +8,7 @@ from twisted.internet.protocol import Protocol
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.internet.defer import DeferredQueue
+import json 
 
 class GameConnectionFactory(ClientFactory):
 	def __init__(self):
@@ -122,21 +123,17 @@ class Player2(Player):
 			self.tail.append(temp)
 
 class GameSpace(Protocol):
-
 	def __init__(self):
+		# Initialize Game State Environment
 		pygame.init()
 		self.size = self.width, self.height = 640,480
 		self.black = (0,0,0)
 		self.screen = pygame.display.set_mode(self.size)
-		self.clock = pygame.time.Clock()
-
+	
 		# Initialize Game Objects
 		self.player1 = Player1(self)
 		self.player2 = Player2(self)
 		self.fuel = Fuel(self)
-
-		# Initialize to false and set to true upon connection
-		self.playing = False
 
 	def main(self):
 		# Read User Input and Handle Events
@@ -173,18 +170,19 @@ class GameSpace(Protocol):
 
 	def connectionMade(self):
 		self.playing = True
-		print("connection made")
 		self.loop = LoopingCall(self.main)
 		self.loop.start(1/60)
-
-	#def startForward(self):
+		self.transport.write('connection made in client2.py')
+		#pos = {"x": self.player2.rect.centerx, "y": self.player2.rect.centery}
+		#data = json.loads(pos)
+		#self.transport.write(data) 
 		
-	
-	#def dataReceived(self, data):
-		
-
-	#def forwardData(self, data):
-		
+	def dataReceived(self, data):
+		pass
+		#pos = json.dumps(data)
+		#self.player1.rect.centerx = pos['x']
+		#self.player1.rect.centery = pos['y']
+				
 if __name__ == "__main__":
 	gcf = GameConnectionFactory()
 	reactor.connectTCP("localhost", 40139, gcf)
