@@ -5,6 +5,7 @@
 import os, sys, pygame, math, collections, random, queue
 from twisted.internet.protocol import Factory
 from twisted.internet.protocol import Protocol
+from twisted.protocols.basic import LineReceiver
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.internet.defer import DeferredQueue
@@ -48,7 +49,7 @@ class Player(pygame.sprite.Sprite):
 		self.head_size = 7
 		self.head = pygame.Surface((self.head_size,self.head_size))
 		self.rect = self.head.get_rect()
-		self.speed = 2
+		self.speed = 1
 		self.alive = True
 		self.user = True
 
@@ -84,13 +85,9 @@ class Player(pygame.sprite.Sprite):
 					self.tail.pop()
 
 				# Send the New Head to the Other Client
-#				pos = {"x": self.rect.centerx, "y": self.rect.centery}
-#				data = json.dumps(pos)
-				#print (data)
-#				self.gs.transport.write(data)
-
-				pos = str(self.rect.centerx) + " " + str(self.rect.centery)
-				self.gs.transport.write(pos)
+				pos = {"x": self.rect.centerx, "y": self.rect.centery}
+				data = json.dumps(pos)
+				self.gs.transport.write(data + '\r\n')
 
 			# Check for Collision with Boundaries or Self
 			if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
@@ -136,7 +133,7 @@ class Player2(Player):
 			temp.centery = self.rect.centery - self.yvel * unit
 			self.tail.append(temp)
 
-class GameSpace(Protocol):
+class GameSpace(LineReceiver):
 	def __init__(self):
 		# Initialize Game State Environment
 		pygame.init()
@@ -184,21 +181,22 @@ class GameSpace(Protocol):
 		pygame.display.update()
 
 	def connectionMade(self):
+		self.transport.write('go\r\n')
 		self.playing = True
 		self.loop = LoopingCall(self.main)
 		self.loop.start(1/60)
 
-	def dataReceived(self, data):
+	def lineReceived(self, data):
 		self.queue.put(data)
 
 	def update(self, data):
-#		pos = json.loads(data)
-#		self.player2.rect.centerx = int(pos["x"])
-#		self.player2.rect.centery = int(pos["y"])
+		pos = json.loads(data)
+		self.player2.rect.centerx = int(pos["x"])
+		self.player2.rect.centery = int(pos["y"])
 
-		pos = data.split(" ")
-		self.player2.rect.centerx = int(pos[0])
-		self.player2.rect.centery = int(pos[1])
+#		pos = data.split(" ")
+#		self.player2.rect.centerx = int(pos[0])
+#		self.player2.rect.centery = int(pos[1])
 
 		self.player2.tail.appendleft(self.player2.rect.copy())
 		while len(self.player2.tail) > self.player2.tail_len:
