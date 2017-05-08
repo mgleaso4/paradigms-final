@@ -8,6 +8,7 @@ from twisted.internet.protocol import Protocol
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.internet.defer import DeferredQueue
+from twisted.python import log
 import json
 
 class GameConnectionFactory(Factory):
@@ -83,25 +84,16 @@ class Player(pygame.sprite.Sprite):
 					self.tail.pop()
 
 				# Send the New Head to the Other Client
-#				pos = {"x": self.rect.centerx, "y": self.rect.centery}
-#				data = json.loads(pos)
-#				self.gs.transport.write(data)
-			else:
-				if not self.gs.queue.empty():
-					data = self.gs.queue.get()
-					pos = json.dumps(data)
-					self.rect.centerx = pos["x"]
-					self.rect.centery = pos["y"]
-
-					self.tail.appendleft(self.rect.copy())
-					while len(self.tail) > self.tail_len:
-						self.tail.pop()
-
+				pos = {"x": self.rect.centerx, "y": self.rect.centery}
+				data = json.dumps(pos)
+				#print (data)
+				self.gs.transport.write(data)
+			
 			# Check for Collision with Boundaries or Self
 			if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
 				self.alive = False
 			for r in range(self.head_size*2,len(self.tail)):
-				if self.rect.colliderect(self.tail[r]):
+				if self.rect.colliderect(self.tail[r]): 
 					self.alive = False
 
 			# Check for Collision with Opponent (Passed as Argument)
@@ -153,7 +145,7 @@ class GameSpace(Protocol):
 		self.player1 = Player1(self)
 		self.player2 = Player2(self)
 		self.fuel = Fuel(self)
-		self.queue = queue.Queue()
+		self.queue = DeferredQueue()
 
 	def main(self):
 		# Read User Input and Handle Events
@@ -187,23 +179,26 @@ class GameSpace(Protocol):
 		pygame.display.flip()
 		pygame.display.update()
 
-	def connectionMade(self):
+	def connectionMade(self): 
 		self.playing = True
 		self.loop = LoopingCall(self.main)
 		self.loop.start(1/60)
-		#self.transport.write('connection made in client1.py')
-		#pos = {"x": self.player1.rect.centerx, "y": self.player1.rect.centery}
-		#data = json.loads(pos)
-		#self.transport.write(data)
 
 	def dataReceived(self, data):
 		self.queue.put(data)
-		#pass
-		#pos = json.dumps(data)
-		#self.player2.rect.centerx = pos['x']
-		#self.player2.rect.centery = pos['y']
+		self.queue.get().addCallback(self.update)
+
+	def update(self, data):
+		pos = json.loads(data) 
+		self.player2.rect.centerx = int(pos["x"])
+		self.player2.rect.centery = int(pos["y"])
+
+		self.player2.tail.appendleft(self.player2.rect.copy())
+		while len(self.player2.tail) > self.player2.tail_len:
+			self.player2.tail.pop()
 
 if __name__ == "__main__":
+	log.startLogging(sys.stdout)
 	gcf = GameConnectionFactory()
 	reactor.listenTCP(40139, gcf)
 	reactor.run()
