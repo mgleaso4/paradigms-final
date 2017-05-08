@@ -37,10 +37,16 @@ class Fuel(pygame.sprite.Sprite):
 			self.gs.player1.tail_len += self.extend
 			self.rect.centerx = random.randint(4, 636)
 			self.rect.centery = random.randint(4, 476)
+			pos = {"x": self.rect.centerx, "y": self.rect.centery, "t1": self.gs.player1.tail_len, "t2": self.gs.player2.tail_len}
+			data = json.dumps(pos)
+			self.gs.transport.write(data + '\r\n')
 		elif self.gs.player2.rect.colliderect(self.rect):
 			self.gs.player2.tail_len += self.extend
 			self.rect.centerx = random.randint(4, 636)
 			self.rect.centery = random.randint(4, 476)
+			pos = {"x": self.rect.centerx, "y": self.rect.centery, "t1": self.gs.player1.tail_len, "t2": self.gs.player2.tail_len}
+			data = json.dumps(pos)
+			self.gs.transport.write(data + '\r\n')
 
 class Player(pygame.sprite.Sprite):
 	# Initialize Player with Starting Position
@@ -193,10 +199,6 @@ class GameSpace(LineReceiver):
 		pos = json.loads(data)
 		self.player2.rect.centerx = int(pos["x"])
 		self.player2.rect.centery = int(pos["y"])
-
-#		pos = data.split(" ")
-#		self.player2.rect.centerx = int(pos[0])
-#		self.player2.rect.centery = int(pos[1])
 
 		self.player2.tail.appendleft(self.player2.rect.copy())
 		while len(self.player2.tail) > self.player2.tail_len:

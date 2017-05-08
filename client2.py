@@ -32,15 +32,16 @@ class Fuel(pygame.sprite.Sprite):
 		self.extend = 10
 
 	def tick(self):
+		pass
 		# Check for collision between food and snake
-		if self.gs.player1.rect.colliderect(self.rect):
-			self.gs.player1.tail_len += self.extend
-			self.rect.centerx = random.randint(4, 636)
-			self.rect.centery = random.randint(4, 476)
-		elif self.gs.player2.rect.colliderect(self.rect):
-			self.gs.player2.tail_len += self.extend
-			self.rect.centerx = random.randint(4, 636)
-			self.rect.centery = random.randint(4, 476)
+#		if self.gs.player1.rect.colliderect(self.rect):
+#			self.gs.player1.tail_len += self.extend
+#			self.rect.centerx = random.randint(4, 636)
+#			self.rect.centery = random.randint(4, 476)
+#		elif self.gs.player2.rect.colliderect(self.rect):
+#			self.gs.player2.tail_len += self.extend
+#			self.rect.centerx = random.randint(4, 636)
+#			self.rect.centery = random.randint(4, 476)
 
 class Player(pygame.sprite.Sprite):
 	# Initialize Player with Starting Position
@@ -88,9 +89,6 @@ class Player(pygame.sprite.Sprite):
 				pos = {"x": self.rect.centerx, "y": self.rect.centery}
 				data = json.dumps(pos)
 				self.gs.transport.write(data + '\r\n')
-
-#				pos = str(self.rect.centerx) + " " + str(self.rect.centery)
-#				self.gs.transport.write(pos)
 
 			# Check for Collision with Boundaries or Self
 			if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
@@ -197,16 +195,18 @@ class GameSpace(LineReceiver):
 
 	def update(self, data):
 		pos = json.loads(data)
-		self.player1.rect.centerx = int(pos["x"])
-		self.player1.rect.centery = int(pos["y"])
+		if 't1' in pos:
+			self.fuel.rect.centerx = int(pos["x"])
+			self.fuel.rect.centery = int(pos["y"])
+			self.player1.tail_len = int(pos["t1"])
+			self.player2.tail_len = int(pos["t2"])
+		else:
+			self.player1.rect.centerx = int(pos["x"])
+			self.player1.rect.centery = int(pos["y"])
 
-#		pos = data.split(" ")
-#		self.player2.rect.centerx = int(pos[0])
-#		self.player2.rect.centery = int(pos[1])
-
-		self.player1.tail.appendleft(self.player1.rect.copy())
-		while len(self.player1.tail) > self.player1.tail_len:
-			self.player1.tail.pop()
+			self.player1.tail.appendleft(self.player1.rect.copy())
+			while len(self.player1.tail) > self.player1.tail_len:
+				self.player1.tail.pop()
 		self.queue.get().addCallback(self.update)
 
 if __name__ == "__main__":
