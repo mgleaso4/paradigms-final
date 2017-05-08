@@ -59,38 +59,32 @@ class Player(pygame.sprite.Sprite):
 	# Change the Direction of the Player
 	def move(self,key):
 		if key == pygame.K_UP and self.yvel <= 0:
+			self.gs.transport.write('w')
 			self.xvel = 0
 			self.yvel = -1 * self.speed
 		if key == pygame.K_DOWN and self.yvel >= 0:
+			self.gs.transport.write('s')
 			self.xvel = 0
 			self.yvel = self.speed
 		if key == pygame.K_LEFT and self.xvel <= 0:
+			self.gs.transport.write('a')
 			self.xvel = -1 * self.speed
 			self.yvel = 0
 		if key == pygame.K_RIGHT and self.xvel >= 0:
+			self.gs.transport.write('d')
 			self.xvel = self.speed
 			self.yvel = 0
 
 	def tick(self, opp):
 		if self.alive:
-		# Update the Player Position
-			if self.user:
-				self.rect.centerx += self.xvel
-				self.rect.centery += self.yvel
+			# Update the Player Position
+			self.rect.centerx += self.xvel
+			self.rect.centery += self.yvel
 
-				# Add the New Rectangle to the Left of the Tail and Pop the Rightmost Rectangle
-				self.tail.appendleft(self.rect.copy())
-				while len(self.tail) > self.tail_len:
-					self.tail.pop()
-
-				# Send the New Head to the Other Client
-#				pos = {"x": self.rect.centerx, "y": self.rect.centery}
-#				data = json.dumps(pos)
-				#print (data)
-#				self.gs.transport.write(data)
-
-				pos = str(self.rect.centerx) + " " + str(self.rect.centery)
-				self.gs.transport.write(pos)
+			# Add the New Rectangle to the Left of the Tail and Pop the Rightmost Rectangle
+			self.tail.appendleft(self.rect.copy())
+			while len(self.tail) > self.tail_len:
+				self.tail.pop()
 
 			# Check for Collision with Boundaries or Self
 			if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
@@ -184,25 +178,25 @@ class GameSpace(Protocol):
 		pygame.display.update()
 
 	def connectionMade(self):
-		self.playing = True
-		self.loop = LoopingCall(self.main)
-		self.loop.start(1/60)
+		self.transport.write('go')
 
 	def dataReceived(self, data):
-		self.queue.put(data)
+		if data == 'go':
+			self.playing = True
+			self.loop = LoopingCall(self.main)
+			self.loop.start(1/60)
+		else:
+			self.queue.put(data)
 
 	def update(self, data):
-#		pos = json.loads(data)
-#		self.player2.rect.centerx = int(pos["x"])
-#		self.player2.rect.centery = int(pos["y"])
-
-		pos = data.split(" ")
-		self.player2.rect.centerx = int(pos[0])
-		self.player2.rect.centery = int(pos[1])
-
-		self.player2.tail.appendleft(self.player2.rect.copy())
-		while len(self.player2.tail) > self.player2.tail_len:
-			self.player2.tail.pop()
+		if data == 'w':
+			self.player2.move(pygame.K_UP)
+		elif data == 's':
+			self.player2.move(pygame.K_DOWN)
+		elif data == 'a':
+			self.player2.move(pygame.K_LEFT)
+		elif data == 'd':
+			self.player2.move(pygame.K_RIGHT)
 		self.queue.get().addCallback(self.update)
 
 if __name__ == "__main__":

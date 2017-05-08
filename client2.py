@@ -84,10 +84,13 @@ class Player(pygame.sprite.Sprite):
 					self.tail.pop()
 
 				# Send the New Head to the Other Client
-				pos = {"x": self.rect.centerx, "y": self.rect.centery}
-				data = json.dumps(pos)
+#				pos = {"x": self.rect.centerx, "y": self.rect.centery}
+#				data = json.dumps(pos)
 				#print (data)
-				self.gs.transport.write(data)
+#				self.gs.transport.write(data)
+
+				pos = str(self.rect.centerx) + " " + str(self.rect.centery)
+				self.gs.transport.write(pos)
 
 			# Check for Collision with Boundaries or Self
 			if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
@@ -146,6 +149,7 @@ class GameSpace(Protocol):
 		self.player2 = Player2(self)
 		self.fuel = Fuel(self)
 		self.queue = DeferredQueue()
+		self.queue.get().addCallback(self.update)
 
 	def main(self):
 		# Read User Input and Handle Events
@@ -187,18 +191,21 @@ class GameSpace(Protocol):
 
 	def dataReceived(self, data):
 		self.queue.put(data)
-		self.queue.get().addCallback(self.update)
 
 	def update(self, data):
-		print(data)
-		pos = json.loads(data)
-		self.player1.rect.centerx = int(pos["x"])  
-		self.player1.rect.centery = int(pos["y"])
+#		pos = json.loads(data)
+#		self.player1.rect.centerx = int(pos["x"])
+#		self.player1.rect.centery = int(pos["y"])
 
-		self.player1.tail.appendleft(self.player1.rect.copy()) 
+		pos = data.split(" ")
+		self.player2.rect.centerx = int(pos[0])
+		self.player2.rect.centery = int(pos[1])
+
+		self.player1.tail.appendleft(self.player1.rect.copy())
 		while len(self.player1.tail) > self.player1.tail_len:
-			self.player1.tail.pop()  
-		
+			self.player1.tail.pop()
+		self.queue.get().addCallback(self.update)
+
 if __name__ == "__main__":
 	log.startLogging(sys.stdout)
 	gcf = GameConnectionFactory()
