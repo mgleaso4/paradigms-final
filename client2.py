@@ -180,11 +180,13 @@ class GameSpace(LineReceiver):
 			if event.type == pygame.KEYDOWN:
 				# Quit on Escape Press
 				if event.key == pygame.K_ESCAPE:
+					reactor.stop()
 					os._exit(1)
 				else:
 					if self.playing:
 						self.player2.move(event.key)
 			elif event.type == pygame.QUIT:
+				reactor.stop()
 				os._exit(1)
 
 		# Call Tick Functions
@@ -222,12 +224,14 @@ class GameSpace(LineReceiver):
 			pygame.display.flip()
 			pygame.display.update()
 			time.sleep(3)
+			reactor.stop()
 			os._exit(1)
 		elif self.player2.collision:
 			self.screen.blit(self.bluewins, self.bluerect)
 			pygame.display.flip()
 			pygame.display.update()
 			time.sleep(3)
+			reactor.stop()
 			os._exit(1)
 
 		# Check if player 1 has died and display red player wins
@@ -236,6 +240,7 @@ class GameSpace(LineReceiver):
 			pygame.display.flip()
 			pygame.display.update()
 			time.sleep(3)
+			reactor.stop()
 			os._exit(1) 
 
 		# Check if player 2 has died and display blue player wins
@@ -244,6 +249,7 @@ class GameSpace(LineReceiver):
 			pygame.display.flip()
 			pygame.display.update()
 			time.sleep(3)
+			reactor.stop()
 			os._exit(1)
 
 	def connectionMade(self):
