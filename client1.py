@@ -2,7 +2,7 @@
 # Maddie Gleason and Ben Gunning
 # PyGame + Twisted Final Project
 
-import os, sys, pygame, math, collections, random, queue
+import os, sys, pygame, math, collections, random, queue, time
 from twisted.internet.protocol import Factory
 from twisted.internet.protocol import Protocol
 from twisted.protocols.basic import LineReceiver
@@ -31,8 +31,8 @@ class Fuel(pygame.sprite.Sprite):
 		self.white = (255,255,255)
 		self.extend = 10
 
+	# Check for collision between food and snake
 	def tick(self):
-		# Check for collision between food and snake
 		if self.gs.player1.rect.colliderect(self.rect):
 			self.gs.player1.tail_len += self.extend
 			self.rect.centerx = random.randint(4, 636)
@@ -58,6 +58,7 @@ class Player(pygame.sprite.Sprite):
 		self.speed = 1
 		self.alive = True
 		self.user = True
+		self.collision = False
 
 		# Create Tail to Store Previous Rectangles
 		self.tail_len = 25
@@ -105,16 +106,19 @@ class Player(pygame.sprite.Sprite):
 			# Check for Collision with Opponent (Passed as Argument)
 			for r in opp:
 				if self.rect.colliderect(r):
-					self.alive = False
+					self.collision = True
+
 
 class Player1(Player):
 	def __init__(self,gs):
+		# Initialize player 1's position and speed
 		Player.__init__(self,gs)
 		self.rect.centerx = 320
 		self.rect.centery = 320
 		self.blue = (0,0,255)
 		self.xvel = 0
 		self.yvel = -1 * self.speed
+		# player 1 is user in client1.py
 		self.user = True
 
 		self.tail.appendleft(self.rect.copy())
@@ -124,6 +128,7 @@ class Player1(Player):
 			self.tail.append(temp)
 
 class Player2(Player):
+	# Initialize player 2's position and speed 
 	def __init__(self,gs):
 		Player.__init__(self,gs)
 		self.rect.centerx = 320
@@ -147,6 +152,17 @@ class GameSpace(LineReceiver):
 		self.black = (0,0,0)
 		self.screen = pygame.display.set_mode(self.size)
 
+		# Load and Resize Game Over Images
+		self.bluewins = pygame.image.load("bluewins.png")
+		self.bluewins = pygame.transform.scale(self.bluewins, (640, 480))
+		self.bluerect = self.bluewins.get_rect()
+		self.redwins = pygame.image.load("redwins.png")
+		self.redwins = pygame.transform.scale(self.redwins, (640, 480))
+		self.redrect = self.redwins.get_rect()
+		self.gameover = pygame.image.load("gameover.png")
+		self.gameover = pygame.transform.scale(self.gameover , (640, 480))
+		self.gamerect = self.gameover.get_rect()
+
 		# Initialize Game Objects
 		self.player1 = Player1(self)
 		self.player2 = Player2(self)
@@ -160,12 +176,12 @@ class GameSpace(LineReceiver):
 			if event.type == pygame.KEYDOWN:
 				# Quit on Escape Press
 				if event.key == pygame.K_ESCAPE:
-					self.loop.stop()
+					os._exit(1)
 				else:
 					if self.playing:
 						self.player1.move(event.key)
 			elif event.type == pygame.QUIT:
-				self.loop.stop()
+				os._exit(1)
 
 		if self.playing:
 			self.player1.tick(self.player2.tail)
@@ -186,7 +202,38 @@ class GameSpace(LineReceiver):
 		pygame.display.flip()
 		pygame.display.update()
 
+		# Check for collision between players, and display winner
+		if self.player1.collision or self.player2.collision: 
+			# Whoever is longer, wins; otherwise, tie
+			if self.player1.tail_len > self.player2.tail_len: 
+				self.screen.blit(self.bluewins, self.bluerect)
+			elif self.player2.tail_len > self.player1.tail_len: 
+				self.screen.blit(self.redwins, self.redrect) 
+			else:
+				self.screen.blit(self.gameover, self.gamerect) 
+			pygame.display.flip()
+			pygame.display.update()
+			time.sleep(3)
+			os._exit(1)
+
+		# Check if player 1 has died and display red player wins
+		if not self.player1.alive and self.player2.alive:
+			self.screen.blit(self.redwins, self.redrect) 
+			pygame.display.flip()
+			pygame.display.update()
+			time.sleep(3)
+			os._exit(1)
+		
+		# Check if player 2 has died and display blue player wins
+		if not self.player2.alive and self.player1.alive: 
+			self.screen.blit(self.bluewins, self.bluerect)
+			pygame.display.flip()
+			pygame.display.update() 
+			time.sleep(3)
+			os._exit(1)
+
 	def connectionMade(self):
+		# Upon connection write to client and start game loop
 		self.transport.write('go\r\n')
 		self.playing = True
 		self.loop = LoopingCall(self.main)
@@ -197,9 +244,11 @@ class GameSpace(LineReceiver):
 
 	def update(self, data):
 		pos = json.loads(data)
+		# update player 2 with new position
 		self.player2.rect.centerx = int(pos["x"])
 		self.player2.rect.centery = int(pos["y"])
 
+		# update player 2's tail 
 		self.player2.tail.appendleft(self.player2.rect.copy())
 		while len(self.player2.tail) > self.player2.tail_len:
 			self.player2.tail.pop()

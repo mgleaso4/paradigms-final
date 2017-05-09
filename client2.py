@@ -2,7 +2,7 @@
 # Maddie Gleason and Ben Gunning
 # PyGame + Twisted Final Project
 
-import os, sys, pygame, math, collections, random, queue
+import os, sys, pygame, math, collections, random, queue, time
 from twisted.internet.protocol import ClientFactory
 from twisted.internet.protocol import Protocol
 from twisted.protocols.basic import LineReceiver
@@ -31,17 +31,9 @@ class Fuel(pygame.sprite.Sprite):
 		self.white = (255,255,255)
 		self.extend = 10
 
+	# Used in client1 to check for collision between user and food 
 	def tick(self):
 		pass
-		# Check for collision between food and snake
-#		if self.gs.player1.rect.colliderect(self.rect):
-#			self.gs.player1.tail_len += self.extend
-#			self.rect.centerx = random.randint(4, 636)
-#			self.rect.centery = random.randint(4, 476)
-#		elif self.gs.player2.rect.colliderect(self.rect):
-#			self.gs.player2.tail_len += self.extend
-#			self.rect.centerx = random.randint(4, 636)
-#			self.rect.centery = random.randint(4, 476)
 
 class Player(pygame.sprite.Sprite):
 	# Initialize Player with Starting Position
@@ -52,6 +44,7 @@ class Player(pygame.sprite.Sprite):
 		self.rect = self.head.get_rect()
 		self.speed = 1
 		self.alive = True
+		self.collision = False
 		self.user = True
 
 		# Create Tail to Store Previous Rectangles
@@ -100,10 +93,11 @@ class Player(pygame.sprite.Sprite):
 			# Check for Collision with Opponent (Passed as Argument)
 			for r in opp:
 				if self.rect.colliderect(r):
-					self.alive = False
+					self.collision = True
 
 class Player1(Player):
 	def __init__(self,gs):
+		# Intitialize player 2's position and speed
 		Player.__init__(self,gs)
 		self.rect.centerx = 320
 		self.rect.centery = 320
@@ -120,12 +114,14 @@ class Player1(Player):
 
 class Player2(Player):
 	def __init__(self,gs):
+		# Intitialize player 1's position and speed
 		Player.__init__(self,gs)
 		self.rect.centerx = 320
 		self.rect.centery = 160
 		self.red = (255,0,0)
 		self.xvel = 0
 		self.yvel = self.speed
+		# player 2 is user in client2.py
 		self.user = True
 
 		self.tail.appendleft(self.rect.copy())
@@ -142,6 +138,17 @@ class GameSpace(LineReceiver):
 		self.black = (0,0,0)
 		self.screen = pygame.display.set_mode(self.size)
 
+		# Load and Resize Game Over Images
+		self.bluewins = pygame.image.load("bluewins.png")
+		self.bluewins = pygame.transform.scale(self.bluewins, (640, 480))
+		self.bluerect = self.bluewins.get_rect()
+		self.redwins = pygame.image.load("redwins.png")
+		self.redwins = pygame.transform.scale(self.redwins, (640, 480))
+		self.redrect = self.redwins.get_rect()
+		self.gameover = pygame.image.load("gameover.png")
+		self.gameover = pygame.transform.scale(self.gameover , (640, 480))
+		self.gamerect = self.gameover.get_rect()
+
 		# Initialize Game Objects
 		self.player1 = Player1(self)
 		self.player2 = Player2(self)
@@ -149,18 +156,18 @@ class GameSpace(LineReceiver):
 		self.queue = DeferredQueue()
 		self.queue.get().addCallback(self.update)
 
-	def main(self):
+	def main(self): 
 		# Read User Input and Handle Events
 		for event in pygame.event.get():
 			if event.type == pygame.KEYDOWN:
 				# Quit on Escape Press
 				if event.key == pygame.K_ESCAPE:
-					self.loop.stop()
+					os._exit(1)
 				else:
 					if self.playing:
 						self.player2.move(event.key)
 			elif event.type == pygame.QUIT:
-				self.loop.stop()
+				os._exit(1)
 
 		# Call Tick Functions
 		if self.playing:
@@ -181,11 +188,41 @@ class GameSpace(LineReceiver):
 			self.player2.head.fill(self.player2.red)
 		pygame.display.flip()
 		pygame.display.update()
+		
+		# Check for collision between players, and display winner
+		if self.player1.collision or self.player2.collision: 
+			if self.player1.tail_len > self.player2.tail_len: 
+				self.screen.blit(self.bluewins, self.bluerect)
+			elif self.player2.tail_len > self.player1.tail_len: 
+				self.screen.blit(self.redwins, self.redrect) 
+			else:
+				self.screen.blit(self.gameover, self.gamerect) 
+			pygame.display.flip()
+			pygame.display.update()
+			time.sleep(3)
+			os._exit(1)
+
+		# Check if player 1 has died and display red player wins
+		if not self.player1.alive and self.player2.alive: 
+			self.screen.blit(self.redwins, self.redrect) 
+			pygame.display.flip()
+			pygame.display.update()
+			time.sleep(3)
+			os._exit(1) 
+		
+		# Check if player 2 has died and display blue player wins
+		if not self.player2.alive and self.player1.alive: 
+			self.screen.blit(self.bluewins, self.bluerect)
+			pygame.display.flip()
+			pygame.display.update()
+			time.sleep(3)
+			os._exit(1)
 
 	def connectionMade(self):
 		pass
 
 	def lineReceived(self, data):
+		# Upon receiving initial go data start game loop
 		if data == 'go':
 			self.playing = True
 			self.loop = LoopingCall(self.main)
@@ -195,15 +232,18 @@ class GameSpace(LineReceiver):
 
 	def update(self, data):
 		pos = json.loads(data)
+		# pass over new length if food consumed
 		if 't1' in pos:
 			self.fuel.rect.centerx = int(pos["x"])
 			self.fuel.rect.centery = int(pos["y"])
 			self.player1.tail_len = int(pos["t1"])
 			self.player2.tail_len = int(pos["t2"])
 		else:
+			# update player 1 with new position
 			self.player1.rect.centerx = int(pos["x"])
 			self.player1.rect.centery = int(pos["y"])
 
+			# update player 1's tail
 			self.player1.tail.appendleft(self.player1.rect.copy())
 			while len(self.player1.tail) > self.player1.tail_len:
 				self.player1.tail.pop()
