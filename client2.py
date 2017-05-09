@@ -67,33 +67,33 @@ class Player(pygame.sprite.Sprite):
 			self.yvel = 0
 
 	def tick(self, opp):
-		if self.alive:
+		
 		# Update the Player Position
-			if self.user:
-				self.rect.centerx += self.xvel
-				self.rect.centery += self.yvel
+		if self.user:
+			self.rect.centerx += self.xvel
+			self.rect.centery += self.yvel
 
-				# Add the New Rectangle to the Left of the Tail and Pop the Rightmost Rectangle
-				self.tail.appendleft(self.rect.copy())
-				while len(self.tail) > self.tail_len:
-					self.tail.pop()
+			# Add the New Rectangle to the Left of the Tail and Pop the Rightmost Rectangle
+			self.tail.appendleft(self.rect.copy())
+			while len(self.tail) > self.tail_len:
+				self.tail.pop()
 
-				# Send the New Head to the Other Client
-				pos = {"x": self.rect.centerx, "y": self.rect.centery}
-				data = json.dumps(pos)
-				self.gs.transport.write(data + '\r\n')
+			# Send the New Head to the Other Client
+			pos = {"x": self.rect.centerx, "y": self.rect.centery}
+			data = json.dumps(pos)
+			self.gs.transport.write(data + '\r\n')
 
-			# Check for Collision with Boundaries or Self
-			if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
+		# Check for Collision with Boundaries or Self
+		if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
+			self.alive = False
+		for r in range(self.head_size*2,len(self.tail)):
+			if self.rect.colliderect(self.tail[r]):
 				self.alive = False
-			for r in range(self.head_size*2,len(self.tail)):
-				if self.rect.colliderect(self.tail[r]):
-					self.alive = False
 
-			# Check for Collision with Opponent (Passed as Argument)
-			for r in opp:
-				if self.rect.colliderect(r):
-					self.collision = True
+		# Check for Collision with Opponent (Passed as Argument)
+		for r in opp:
+			if self.rect.colliderect(r):
+				self.collision = True
 
 class Player1(Player):
 	def __init__(self,gs):
@@ -203,7 +203,7 @@ class GameSpace(LineReceiver):
 			os._exit(1)
 
 		# Check if player 1 has died and display red player wins
-		if not self.player1.alive and self.player2.alive: 
+		if (not self.player1.alive and self.player2.alive): 
 			self.screen.blit(self.redwins, self.redrect) 
 			pygame.display.flip()
 			pygame.display.update()
@@ -211,7 +211,7 @@ class GameSpace(LineReceiver):
 			os._exit(1) 
 		
 		# Check if player 2 has died and display blue player wins
-		if not self.player2.alive and self.player1.alive: 
+		if (not self.player2.alive and self.player1.alive): 
 			self.screen.blit(self.bluewins, self.bluerect)
 			pygame.display.flip()
 			pygame.display.update()
