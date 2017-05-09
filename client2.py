@@ -260,7 +260,6 @@ class GameSpace(LineReceiver):
 
 	def update(self, data):
 		pos = json.loads(data)
-		print (pos)
 		# pass over new length if food consumed
 		if 't1' in pos:
 			self.fuel.rect.centerx = int(pos["x"])
