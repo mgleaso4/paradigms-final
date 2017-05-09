@@ -98,22 +98,31 @@ class Player(pygame.sprite.Sprite):
 		# Check for Collision with Boundaries or Self
 		if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
 			self.alive = False
-			alive = {"alive": self.alive}
-			data = json.dumps(alive)
+			if self.user:
+				dead = {"dead": 1}
+			else:
+				dead = {"dead": 2}
+			data = json.dumps(dead)
 			self.gs.transport.write(data + '\r\n')
 
 		for r in range(self.head_size*2,len(self.tail)):
 			if self.rect.colliderect(self.tail[r]):
 				self.alive = False
-				alive = {"alive": self.alive}
-				data = json.dumps(alive)
+				if self.user:
+					dead = {"dead": 1}
+				else:
+					dead = {"dead": 2}
+				data = json.dumps(dead)
 				self.gs.transport.write(data + '\r\n')
 
 		# Check for Collision with Opponent (Passed as Argument)
 		for r in opp:
 			if self.rect.colliderect(r):
 				self.collision = True
-				collision = {"collision": self.collision}
+				if self.user:
+					collision = {"collision": 1}
+				else:
+					collision = {"collision": 2}
 				data = json.dumps(collision)
 				self.gs.transport.write(data + '\r\n')
 
@@ -136,7 +145,7 @@ class Player1(Player):
 			self.tail.append(temp)
 
 class Player2(Player):
-	# Initialize player 2's position and speed 
+	# Initialize player 2's position and speed
 	def __init__(self,gs):
 		Player.__init__(self,gs)
 		self.rect.centerx = 320
@@ -212,16 +221,16 @@ class GameSpace(LineReceiver):
 
 		# Check for collision between players, and display winner
 		if self.player1.collision:
-			if self.player2.collision: 
+			if self.player2.collision:
 				# Whoever is longer, wins; otherwise, tie
-				if self.player1.tail_len > self.player2.tail_len: 
+				if self.player1.tail_len > self.player2.tail_len:
 					self.screen.blit(self.bluewins, self.bluerect)
-				elif self.player2.tail_len > self.player1.tail_len: 
-					self.screen.blit(self.redwins, self.redrect) 
+				elif self.player2.tail_len > self.player1.tail_len:
+					self.screen.blit(self.redwins, self.redrect)
 				else:
 					self.screen.blit(self.gameover, self.gamerect)
-			else: 
-				self.screen.blit(self.redwins, self.redrect) 
+			else:
+				self.screen.blit(self.redwins, self.redrect)
 			pygame.display.flip()
 			pygame.display.update()
 			time.sleep(3)
@@ -235,17 +244,17 @@ class GameSpace(LineReceiver):
 
 		# Check if player 1 has died and display red player wins
 		if not self.player1.alive:
-			self.screen.blit(self.redwins, self.redrect) 
+			self.screen.blit(self.redwins, self.redrect)
 			pygame.display.flip()
 			pygame.display.update()
 			time.sleep(3)
 			os._exit(1)
-		
+
 		# Check if player 2 has died and display blue player wins
-		if not self.player2.alive: 
+		if not self.player2.alive:
 			self.screen.blit(self.bluewins, self.bluerect)
 			pygame.display.flip()
-			pygame.display.update() 
+			pygame.display.update()
 			time.sleep(3)
 			os._exit(1)
 
@@ -261,17 +270,23 @@ class GameSpace(LineReceiver):
 
 	def update(self, data):
 		pos = json.loads(data)
-		
-		if 'alive' in pos: 
-			self.player2.alive = False
-		elif 'collision' in pos: 
-			self.player2.collision = True
+
+		if 'dead' in pos:
+			if int(pos["dead"]) == 1:
+				self.player1.alive = False
+			else:
+				self.player2.alive = False
+		elif 'collision' in pos:
+			if int(pos["collision"]) == 1:
+				self.player1.collision = True
+			else:
+				self.player2.collision = True
 		else:
 			# update player 2 with new position
 			self.player2.rect.centerx = int(pos["x"])
 			self.player2.rect.centery = int(pos["y"])
 
-		# update player 2's tail 
+		# update player 2's tail
 		self.player2.tail.appendleft(self.player2.rect.copy())
 		while len(self.player2.tail) > self.player2.tail_len:
 			self.player2.tail.pop()
