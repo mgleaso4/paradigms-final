@@ -9,7 +9,7 @@ Set Up
 	To set up our game simply open two processes on ash. Player 1 should first run client1.py to listen on port 40139. Player 2 should run client2.py to establish the complete game connection. Upon connection, player 1 controls the blue snake and player 2 controls the red snake. 
 
 Game Play 
-	The object of this game is to move the snake around the screen (using the up, down, left, and right arrow keys) to eat food without coliding into the opponent. The snake increases in length after consuming food (white rectangles). Upon an inevitable collision, the player with the longer snake wins the game. Thus, players should avoid collisions with their opponent's snake, the border of the game window, and their own snakes. The game ends when a player wins or the user exits or escapes the game. 
+	The object of this game is to move the snake around the screen (using the up, down, left, and right arrow keys) to eat food without coliding into the opponent. The snake increases in length after consuming food (white rectangles). Upon an inevitable collision, the player with the longer snake wins the game. Thus, players should avoid collisions with their opponent's snake, the border of the game window, and their own snakes. The game ends when a player wins and the user exits or escapes the game. 
 
 Collisions 
 	There are several types of collision that will end the game: 

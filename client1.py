@@ -2,7 +2,7 @@
 # Maddie Gleason and Ben Gunning
 # PyGame + Twisted Final Project
 
-import os, sys, pygame, math, collections, random, queue, time
+import os, sys, pygame, math, collections, random, time
 from twisted.internet.protocol import Factory
 from twisted.internet.protocol import Protocol
 from twisted.protocols.basic import LineReceiver
@@ -55,7 +55,7 @@ class Player(pygame.sprite.Sprite):
 		self.head_size = 7
 		self.head = pygame.Surface((self.head_size,self.head_size))
 		self.rect = self.head.get_rect()
-		self.speed = 1
+		self.speed = 3
 		self.alive = True
 		self.user = True
 		self.collision = False
@@ -94,37 +94,41 @@ class Player(pygame.sprite.Sprite):
 			pos = {"x": self.rect.centerx, "y": self.rect.centery}
 			data = json.dumps(pos)
 			self.gs.transport.write(data + '\r\n')
+			self.playing = False
 
 		# Check for Collision with Boundaries or Self
 		if self.rect.centerx >= self.gs.width or self.rect.centerx <= 0 or self.rect.centery >= self.gs.height or self.rect.centery <= 0:
 			self.alive = False
 			if self.user:
-				dead = {"dead": 1}
+				dead = {"d": 1}
 			else:
-				dead = {"dead": 2}
+				dead = {"d": 2}
 			data = json.dumps(dead)
 			self.gs.transport.write(data + '\r\n')
+			self.playing = False
 
 		for r in range(self.head_size*2,len(self.tail)):
 			if self.rect.colliderect(self.tail[r]):
 				self.alive = False
 				if self.user:
-					dead = {"dead": 1}
+					dead = {"d": 1}
 				else:
-					dead = {"dead": 2}
+					dead = {"d": 2}
 				data = json.dumps(dead)
 				self.gs.transport.write(data + '\r\n')
+				self.playing = False
 
 		# Check for Collision with Opponent (Passed as Argument)
 		for r in opp:
 			if self.rect.colliderect(r):
 				self.collision = True
 				if self.user:
-					collision = {"collision": 1}
+					collision = {"c": 1}
 				else:
-					collision = {"collision": 2}
+					collision = {"c": 2}
 				data = json.dumps(collision)
 				self.gs.transport.write(data + '\r\n')
+				self.playing = False
 
 class Player1(Player):
 	def __init__(self,gs):
@@ -168,6 +172,7 @@ class GameSpace(LineReceiver):
 		self.size = self.width, self.height = 640,480
 		self.black = (0,0,0)
 		self.screen = pygame.display.set_mode(self.size)
+		self.show = True
 
 		# Load and Resize Game Over Images
 		self.bluewins = pygame.image.load("bluewins.png")
@@ -209,8 +214,8 @@ class GameSpace(LineReceiver):
 
 		# Update Screen
 		self.screen.fill(self.black)
-		self.screen.blit(self.fuel.food, self.fuel.rect)
 		if self.playing:
+			self.screen.blit(self.fuel.food, self.fuel.rect)
 			self.fuel.food.fill(self.fuel.white)
 			for rectangle in self.player1.tail:
 				self.screen.blit(self.player1.head,rectangle)
@@ -218,8 +223,9 @@ class GameSpace(LineReceiver):
 				self.screen.blit(self.player2.head,rectangle)
 			self.player1.head.fill(self.player1.blue)
 			self.player2.head.fill(self.player2.red)
-		pygame.display.flip()
-		pygame.display.update()
+			if self.show:
+				pygame.display.flip()
+				pygame.display.update()
 
 		# Check for collision between players, and display winner
 		if self.player1.collision:
@@ -235,34 +241,26 @@ class GameSpace(LineReceiver):
 				self.screen.blit(self.redwins, self.redrect)
 			pygame.display.flip()
 			pygame.display.update()
-			time.sleep(3)
-			reactor.stop()
-			os._exit(1)
+			self.show = False
 		elif self.player2.collision:
 			self.screen.blit(self.bluewins, self.bluerect)
 			pygame.display.flip()
 			pygame.display.update()
-			time.sleep(3)
-			reactor.stop()
-			os._exit(1)
+			self.show = False
 
 		# Check if player 1 has died and display red player wins
 		if not self.player1.alive:
 			self.screen.blit(self.redwins, self.redrect)
 			pygame.display.flip()
 			pygame.display.update()
-			time.sleep(3)
-			reactor.stop()
-			os._exit(1)
+			self.show = False
 
 		# Check if player 2 has died and display blue player wins
 		if not self.player2.alive:
 			self.screen.blit(self.bluewins, self.bluerect)
 			pygame.display.flip()
 			pygame.display.update()
-			time.sleep(3)
-			reactor.stop()
-			os._exit(1)
+			self.show = False
 
 	def connectionMade(self):
 		# Upon connection write to client and start game loop
@@ -277,17 +275,21 @@ class GameSpace(LineReceiver):
 	def update(self, data):
 		pos = json.loads(data)
 
-		if 'dead' in pos:
-			if int(pos["dead"]) == 1:
+		if 'd' in pos:
+			if int(pos["d"]) == 1:
+				self.playing = False
 				self.player1.alive = False
 			else:
+				self.playing = False
 				self.player2.alive = False
-		elif 'collision' in pos:
-			if int(pos["collision"]) == 1:
+		elif 'c' in pos:
+			if int(pos["c"]) == 1:
+				self.playing = False
 				self.player1.collision = True
 			else:
+				self.playing = False
 				self.player2.collision = True
-		else:
+		else:	
 			# update player 2 with new position
 			self.player2.rect.centerx = int(pos["x"])
 			self.player2.rect.centery = int(pos["y"])
